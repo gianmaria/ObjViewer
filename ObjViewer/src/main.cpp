@@ -55,21 +55,26 @@ void error_callback(int error_code, const char *error_str)
 
 const char *vertex_shader_source = R"FOO(
 #version 330 core
+
 layout (location=0) in vec3 aPos;
+out vec4 vertex_color;
 
 void main()
 {
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    vertex_color = vec4(0.5, 0.0, 0.0, 1.0);
 }
 )FOO";
 
 const char *fragment_shader_source = R"FOO(
 #version 330 core
+
+in vec4 vertex_color;
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+    FragColor = vertex_color;
 }
 )FOO";
 
