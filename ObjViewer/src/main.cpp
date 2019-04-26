@@ -112,14 +112,18 @@ int main(void)
         return -1;
     }
 
-    glViewport(0, 0, 800, 600);
-
     glfwSetWindowContentScaleCallback(window, window_content_scale_callback);
     glfwSetWindowSizeCallback(window, window_size_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     glfwSetErrorCallback(error_callback);
 
+    int nr_attributes = 0;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nr_attributes);
+    printf("num attributes shader: %d\n", nr_attributes);
+
+    glViewport(0, 0, 800, 600);
+    
     unsigned int vertex_shader;
     vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
@@ -200,7 +204,10 @@ int main(void)
     
     // unbind the buffers
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
     //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
     glBindVertexArray(0);
 
     while (!glfwWindowShouldClose(window))
@@ -221,8 +228,7 @@ int main(void)
 
         glUseProgram(shader_program);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -230,9 +236,9 @@ int main(void)
         Sleep(50);
     }
 
-
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
 
     glfwTerminate();
 
