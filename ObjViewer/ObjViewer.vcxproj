@@ -84,14 +84,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\glad.c" />
+    <ClCompile Include="src\log.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\glad\glad.h" />
     <ClInclude Include="src\KHR\khrplatform.h" />
+    <ClInclude Include="src\log.h" />
+    <ClInclude Include="src\shader.h" />
+    <ClInclude Include="src\types.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="shaders\vertex_shader.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\fragment_shader.frag" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
