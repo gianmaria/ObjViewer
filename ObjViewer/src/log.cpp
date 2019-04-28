@@ -2,8 +2,9 @@
 #include <stdarg.h>
 
 #include "log.h"
+#include "types.h"
 
-static FILE *log_file;
+local FILE *log_file;
 
 void init_logger()
 {
@@ -51,13 +52,14 @@ void log(LoggerSeverity severity, const char *filename, int line, const char* fm
                 fprintf(log_file, "[UNKNOWN] - ");
                 break;
         }
+        
         fprintf(log_file, "%s\n\n", msg);
         
         fflush(log_file);
     }
     else
     {
-        fprintf(stderr, "[WARNING] logger not initialized!\n");
+        fprintf(stderr, "[WARNING] - logger not initialized!\n");
     }
 }
 

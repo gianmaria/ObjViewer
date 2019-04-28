@@ -3,6 +3,7 @@
 
 #include <glad\glad.h> 
 #include <GLFW\glfw3.h>
+#include "stb_image.h"
 
 #include "log.h"
 #include "shader.h"
@@ -32,6 +33,8 @@ void error_callback(int error_code, const char *error_str)
 
 
 bool draw_wireframe = false;
+float offset = 0.0f;
+int up_or_down = 1;
 
 void process_input(GLFWwindow *window)
 {
@@ -42,6 +45,22 @@ void process_input(GLFWwindow *window)
     else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
         draw_wireframe = !draw_wireframe;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    {
+        offset += 0.05f;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    {
+        offset -= 0.05f;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        up_or_down = 1;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        up_or_down = -1;
     }
 }
 
@@ -80,23 +99,26 @@ int main(void)
 
     int nr_attributes = 0;
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nr_attributes);
-    LOG_I("num attributes shader: %d\n", nr_attributes);
+    //LOG_I("num attributes shader: %d\n", nr_attributes);
 
     glViewport(0, 0, 800, 600);
     
     Shader shader;
-    init(&shader, "shaders\\vertex_shader.vert", "shaders\\fragment_shader.frag");
+    init(&shader, "shader\\vertex_shader.vert", "shader\\fragment_shader.frag");
     
     float vertices[] = {
-        0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
-       -0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
-        0.0f,  0.5f, 0.0f,   0.0f, 0.0f, 1.0f
+        // positions         // colors           // texture coords
+        0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+        0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+       -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+       -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
     };
 
     unsigned int indices[] = {
-        0, 1, 2,
+        0, 1, 3,
+        1, 2, 3
     };
-
+        
     unsigned int VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -110,19 +132,47 @@ int main(void)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    // color attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    
-    // unbind the buffers
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // texture coord attribute
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
-    glBindVertexArray(0);
+
+    // --- TEXTURE ---
+
+    u32 texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    s32 width, height, n_channels;
+    const char *texture_filename = "texture\\container.jpg";
+    u8 *data = stbi_load(texture_filename, &width, &height, &n_channels, 0);
+
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        stbi_image_free(data);
+    }
+    else
+    {
+        LOG_E("Cannot load '%s'", texture_filename);
+    }
+
+    // --- TEXTURE ---
+
 
     while (!glfwWindowShouldClose(window))
     {
@@ -141,11 +191,18 @@ int main(void)
         glClear(GL_COLOR_BUFFER_BIT);
 
         use(&shader);
+        set_float(&shader, "offset", offset);
+        set_int(&shader, "up_or_down", up_or_down);
+
+        glBindTexture(GL_TEXTURE_2D, texture);
+        
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        Sleep(10);
     }
 
     glDeleteVertexArrays(1, &VAO);
@@ -153,6 +210,5 @@ int main(void)
     glDeleteBuffers(1, &EBO);
 
     glfwTerminate();
-
     return 0;
 }
