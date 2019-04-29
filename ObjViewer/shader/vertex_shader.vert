@@ -8,13 +8,10 @@ out vec3 ourColor;
 out vec2 texCoord;
 out vec3 ourPos;
 
-uniform float offset;
-uniform int up_or_down;
-
 void main()
 {
-    gl_Position = vec4(aPos.x + offset, aPos.y * up_or_down, aPos.z, 1.0);
-    ourColor = aColor;
+    gl_Position = vec4(aPos.xyz, 1.0);
     ourPos = aPos;
+    ourColor = aColor;
     texCoord = aTexCoord;
 }

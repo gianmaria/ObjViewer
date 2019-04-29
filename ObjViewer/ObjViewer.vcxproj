@@ -102,6 +102,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\fragment_shader.frag" />
+    <None Include="shader\fragment_shader.frag" />
+    <None Include="shader\vertex_shader.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="texture\container.jpg" />
+    <Image Include="texture\wall.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

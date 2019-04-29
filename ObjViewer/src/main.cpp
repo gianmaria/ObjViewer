@@ -35,10 +35,11 @@ void error_callback(int error_code, const char *error_str)
 bool draw_wireframe = false;
 float offset = 0.0f;
 int up_or_down = 1;
+float mix_value = 0.2;
 
 void process_input(GLFWwindow *window)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, true);
     }
@@ -56,11 +57,11 @@ void process_input(GLFWwindow *window)
     }
     else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
-        up_or_down = 1;
+        mix_value = mix_value < 1.0f ? (mix_value + 0.005f) : 1.0f;
     }
     else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
-        up_or_down = -1;
+        mix_value = mix_value > 0.0f ? (mix_value - 0.005f) : 0.0f;
     }
 }
 
@@ -111,7 +112,7 @@ int main(void)
         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-       -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
+       -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left  
     };
 
     unsigned int indices[] = {
@@ -147,9 +148,9 @@ int main(void)
 
     // --- TEXTURE ---
 
-    u32 texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    u32 texture_container, texture_awesomeface;
+    glGenTextures(1, &texture_container);
+    glBindTexture(GL_TEXTURE_2D, texture_container);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -158,6 +159,7 @@ int main(void)
 
     s32 width, height, n_channels;
     const char *texture_filename = "texture\\container.jpg";
+    stbi_set_flip_vertically_on_load(true);
     u8 *data = stbi_load(texture_filename, &width, &height, &n_channels, 0);
 
     if (data)
@@ -168,11 +170,37 @@ int main(void)
     }
     else
     {
-        LOG_E("Cannot load '%s'", texture_filename);
+        LOG_E("Cannot load texture '%s'", texture_filename);
+    }
+
+
+    glGenTextures(1, &texture_awesomeface);
+    glBindTexture(GL_TEXTURE_2D, texture_awesomeface);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    texture_filename = "texture\\awesomeface_alpha.png";
+    data = stbi_load(texture_filename, &width, &height, &n_channels, 0);
+
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        stbi_image_free(data);
+    }
+    else
+    {
+        LOG_E("Cannot load texture '%s'", texture_filename);
     }
 
     // --- TEXTURE ---
 
+    use(&shader);
+    set_int(&shader, "texture_container", 0);
+    set_int(&shader, "texture_awesomeface", 1);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -190,12 +218,17 @@ int main(void)
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        use(&shader);
-        set_float(&shader, "offset", offset);
-        set_int(&shader, "up_or_down", up_or_down);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture_container);
 
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texture_awesomeface);
         
+        use(&shader);
+        //set_float(&shader, "offset", offset);
+        //set_int(&shader, "up_or_down", up_or_down);
+        set_float(&shader, "mix_value", mix_value);
+
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         
