@@ -2,8 +2,14 @@
 #include <math.h>
 
 #include <glad\glad.h> 
+
 #include <GLFW\glfw3.h>
+
 #include "stb_image.h"
+
+#include <glm\glm.hpp>
+#include <glm\gtc\matrix_transform.hpp>
+#include <glm\gtc\type_ptr.hpp>
 
 #include "log.h"
 #include "shader.h"
@@ -35,11 +41,11 @@ void error_callback(int error_code, const char *error_str)
 bool draw_wireframe = false;
 float offset = 0.0f;
 int up_or_down = 1;
-float mix_value = 0.2;
+float mix_value = 0.2f;
 
 void process_input(GLFWwindow *window)
 {
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, true);
     }
@@ -57,7 +63,7 @@ void process_input(GLFWwindow *window)
     }
     else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
-        mix_value = mix_value < 1.0f ? (mix_value + 0.005f) : 1.0f;
+        mix_value = mix_value < 1.0f ? (mix_value + 0.009f) : 1.0f;
     }
     else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
@@ -179,8 +185,8 @@ int main(void)
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     texture_filename = "texture\\awesomeface_alpha.png";
     data = stbi_load(texture_filename, &width, &height, &n_channels, 0);
@@ -202,6 +208,8 @@ int main(void)
     set_int(&shader, "texture_container", 0);
     set_int(&shader, "texture_awesomeface", 1);
 
+
+
     while (!glfwWindowShouldClose(window))
     {
         process_input(window);
@@ -214,7 +222,7 @@ int main(void)
         {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
-
+               
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -223,11 +231,19 @@ int main(void)
 
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, texture_awesomeface);
-        
+
+        glm::mat4 trans = glm::mat4(1.0f);
+        trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+        //trans = glm::scale(trans, glm::vec3(0.5f, 0.5f, 0.0f));
+        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+
         use(&shader);
         //set_float(&shader, "offset", offset);
         //set_int(&shader, "up_or_down", up_or_down);
         set_float(&shader, "mix_value", mix_value);
+
+        u32 transform_loc = glGetUniformLocation(shader.ID, "transform");
+        glUniformMatrix4fv(transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
