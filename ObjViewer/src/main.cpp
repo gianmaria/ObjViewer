@@ -14,11 +14,14 @@
 #include "log.h"
 #include "shader.h"
 
+u32 screen_width = 800;
+u32 screen_height = 600;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     printf("Framebuffer W: %d, H: %d\n", width, height);
-
+    screen_width = width;
+    screen_height = height;
     glViewport(0, 0, width, height);
 }
 
@@ -39,35 +42,17 @@ void error_callback(int error_code, const char *error_str)
 
 
 bool draw_wireframe = false;
-float offset = 0.0f;
-int up_or_down = 1;
-float mix_value = 0.2f;
 
 void process_input(GLFWwindow *window)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, true);
     }
     else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
         draw_wireframe = !draw_wireframe;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-    {
-        offset += 0.05f;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-    {
-        offset -= 0.05f;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-    {
-        mix_value = mix_value < 1.0f ? (mix_value + 0.009f) : 1.0f;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-    {
-        mix_value = mix_value > 0.0f ? (mix_value - 0.005f) : 0.0f;
     }
 }
 
@@ -80,7 +65,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    GLFWwindow *window = glfwCreateWindow(800, 600, "ObjViewer", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(screen_width, screen_height, "ObjViewer", NULL, NULL);
 
     if (!window)
     {
@@ -232,22 +217,28 @@ int main(void)
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, texture_awesomeface);
 
-        glm::mat4 trans = glm::mat4(1.0f);
-        trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
-        //trans = glm::scale(trans, glm::vec3(0.5f, 0.5f, 0.0f));
-        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
-        use(&shader);
-        //set_float(&shader, "offset", offset);
-        //set_int(&shader, "up_or_down", up_or_down);
-        set_float(&shader, "mix_value", mix_value);
+            glm::mat4 view = glm::mat4(1.0f);
+            view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
 
-        u32 transform_loc = glGetUniformLocation(shader.ID, "transform");
-        glUniformMatrix4fv(transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
+            glm::mat4 projection = glm::mat4(1.0f);
+            projection = glm::perspective(glm::radians(45.0f), 
+                                          (float)screen_width / (float)screen_height, 
+                                          0.1f, 100.0f);
 
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        
+
+            use(&shader);
+            set_mat4(&shader, "model", model);
+            set_mat4(&shader, "view", view);
+            set_mat4(&shader, "projection", projection);
+
+            glBindVertexArray(VAO);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        }
+
         glfwSwapBuffers(window);
         glfwPollEvents();
 
