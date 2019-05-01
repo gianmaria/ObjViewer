@@ -153,13 +153,13 @@ int main(void)
         glm::vec3(-1.3f,  1.0f, -1.5f)  
     };
         
-    unsigned int VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    unsigned int cube_VAO, cube_VBO;
+    glGenVertexArrays(1, &cube_VAO);
+    glGenBuffers(1, &cube_VBO);
     
-    glBindVertexArray(VAO);
+    glBindVertexArray(cube_VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, cube_VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // position attribute
@@ -243,11 +243,16 @@ int main(void)
         delta_time = current_frame - last_frame;
         last_frame = current_frame;
 
-        fprintf(stderr, "elapsed: %.3fs  dt: %.4f  ms/frame: %.4f  FPS: %.1f\r", 
+        fprintf(stderr, "elapsed: %.3fs  dt: %.4f  ms/frame: %.4f  FPS: %.1f"
+                "  Flying cam: %3s"
+                "  Cam.pos: [%.3f %.3f %.3f]  Cam.up: [%.3f %.3f %.3f] \r", 
                current_frame, 
                delta_time,
                delta_time * 1000.0f,
-               1.0f / delta_time);
+               1.0f / delta_time,
+                cam.flying ? "ON" : "OFF",
+                (float)cam.position.x, (float)cam.position.y, (float)cam.position.z,
+                (float)cam.up.x,(float)cam.up.y,(float)cam.up.z);
 
         process_input(window);
 
@@ -280,7 +285,7 @@ int main(void)
         set_mat4(&shader, "view", get_view_matrix(&cam));
         set_mat4(&shader, "projection", projection);
 
-        glBindVertexArray(VAO);
+        glBindVertexArray(cube_VAO);
         for (u32 index = 0; 
              index < ArrayCount(cube_positions);
              ++index)
@@ -302,8 +307,8 @@ int main(void)
         Sleep(10);
     }
 
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
+    glDeleteVertexArrays(1, &cube_VAO);
+    glDeleteBuffers(1, &cube_VBO);
 
     glfwTerminate();
     return 0;
@@ -314,7 +319,6 @@ void process_input(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
     {
-        cam.speed *= 2.5f;
     }
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS ||
@@ -325,12 +329,26 @@ void process_input(GLFWwindow *window)
 
     if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
     {
-        draw_wireframe = !draw_wireframe;
+        static double last_time = 0.0;
+        double current_time = glfwGetTime();
+        if ((current_time - last_time) > 0.05)
+        {
+            draw_wireframe = !draw_wireframe;
+        }
+        last_time = current_time;
+
     }
     
     if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS)
     {
-        cam.flying = !cam.flying;
+        static double last_time = 0.0;
+
+        double current_time = glfwGetTime();
+        if ((current_time - last_time) > 0.05)
+        {
+            cam.flying = !cam.flying;
+        }
+        last_time = current_time;
     }
 
     if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)

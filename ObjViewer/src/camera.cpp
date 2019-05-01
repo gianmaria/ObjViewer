@@ -38,8 +38,9 @@ glm::mat4 get_view_matrix(Camera *cam)
 
 void move(Camera *cam, const glm::vec3 &new_pos, float dt)
 {
+    cam->prev_y_pos = cam->position.y;
+
     float velocity = cam->speed * dt;
-    cam->old_y_pos = cam->position.y;
 
 #if 1
     cam->position += cam->right * velocity * new_pos.x;
@@ -68,7 +69,8 @@ void move(Camera *cam, const glm::vec3 &new_pos, float dt)
         }
     }
 #endif
-    if (!cam->flying) cam->position.y = cam->old_y_pos;
+
+    if (!cam->flying) cam->position.y = cam->prev_y_pos;
 }
 
 void rotate(Camera *cam, float yaw, float pitch)
@@ -92,12 +94,12 @@ void zoom(Camera *cam, float zoom)
 
 void update(Camera *cam)
 {
-    glm::vec3 front;
-    front.x = glm::cos(glm::radians(cam->yaw)) * glm::cos(glm::radians(cam->pitch));
-    front.y = glm::sin(glm::radians(cam->pitch));
-    front.z = glm::sin(glm::radians(cam->yaw)) * glm::cos(glm::radians(cam->pitch));
+    glm::vec3 new_front;
+    new_front.x = glm::cos(glm::radians(cam->yaw)) * glm::cos(glm::radians(cam->pitch));
+    new_front.y = glm::sin(glm::radians(cam->pitch));
+    new_front.z = glm::sin(glm::radians(cam->yaw)) * glm::cos(glm::radians(cam->pitch));
 
-    cam->front = glm::normalize(front);
+    cam->front = glm::normalize(new_front);
     cam->right = glm::normalize(glm::cross(cam->world_up, cam->front));
     cam->up    = glm::normalize(glm::cross(cam->right, cam->front));
 }
