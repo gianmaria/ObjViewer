@@ -13,160 +13,40 @@
 
 #include "log.h"
 #include "shader.h"
+#include "camera.h"
 
 #define ArrayCount(a) (sizeof(a) / sizeof(a[0]))
 
 u32 screen_width = 800;
 u32 screen_height = 600;
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-{
-    printf("Framebuffer W: %d, H: %d\n", width, height);
-    screen_width = width;
-    screen_height = height;
-    glViewport(0, 0, width, height);
-}
-
-void window_size_callback(GLFWwindow *window, int width, int height)
-{
-    printf("Window W: %d, H: %d\n", width, height);
-}
-
-void window_content_scale_callback(GLFWwindow* window, float xscale, float yscale)
-{
-    printf("Content scale xscale: %f, yscale: %f\n", xscale, yscale);
-}
-
-void error_callback(int error_code, const char *error_str)
-{
-    LOG_E("GLFW error #%d: %s", error_code, error_str);
-}
-
-
 bool draw_wireframe = false;
-float fov = 45.0f;
 
-float pitch_angle;
-float yaw_angle = -90.0f;
 float delta_time;
 float last_frame;
 
+Camera cam;
 float mouse_last_x = screen_width / 2.0f;
 float mouse_last_y = screen_height / 2.0f;
 
-glm::vec3 camera_pos   = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 camera_up    = glm::vec3(0.0f, 1.0f, 0.0f);
-
-void process_input(GLFWwindow *window)
-{
-    float camera_speed = 5.5f * delta_time;
-
-    
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-    {
-        camera_speed *= 2.5f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS ||
-        glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-    {
-        glfwSetWindowShouldClose(window, true);
-    }
-    if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
-    {
-        draw_wireframe = !draw_wireframe;
-    }
-    if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
-    {
-        fov -= 0.5f;
-        if (fov < 0.0f) fov = 0.0f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
-    {
-        fov += 0.5f;
-        if (fov > 180.0f) fov = 180.0f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-    {
-        screen_height += 2;
-    }
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-    {
-        screen_height -= 2;
-    }
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-    {
-        screen_width += 2;
-    }
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-    {
-        screen_width -= 2;
-    }
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-    {
-        camera_pos += camera_speed * camera_front;
-    }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-    {
-        camera_pos -= camera_speed * camera_front;
-    }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    {
-        camera_pos -= glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
-    }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    {
-        camera_pos += glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
-    }
+float mouse_sensitivity = 0.05f;
 
 
-}
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
-void mouse_callback(GLFWwindow *window, double mouse_x, double mouse_y)
-{
-    static bool first_mouse = true;
-    if (first_mouse) // to avoid big jump on first callback
-    {
-        mouse_last_x = mouse_x;
-        mouse_last_y = mouse_y;
-        first_mouse = false;
-    }
-    
-    float mouse_x_offset = mouse_x - mouse_last_x;
-    float mouse_y_offset = mouse_last_y - mouse_y;
+void window_size_callback(GLFWwindow *window, int width, int height);
 
-    mouse_last_x = mouse_x;
-    mouse_last_y = mouse_y;
+void window_content_scale_callback(GLFWwindow* window, float xscale, float yscale);
 
-    float mouse_sensitivity = 0.05f;
+void error_callback(int error_code, const char *error_str);
 
-    mouse_x_offset *= mouse_sensitivity;
-    mouse_y_offset *= mouse_sensitivity;
+void process_input(GLFWwindow *window);
 
-    yaw_angle += mouse_x_offset;
-    pitch_angle += mouse_y_offset;
+void mouse_callback(GLFWwindow *window, double mouse_x, double mouse_y);
 
-    if (pitch_angle > 80.0f) pitch_angle = 80.0f;
-    if (pitch_angle < -80.0f) pitch_angle = -80.0f;
+void scroll_callback(GLFWwindow *window, double x_offset, double y_offset);
 
-    //printf("pitch angle: %f\n", pitch_angle);
 
-    glm::vec3 front;
-    front.x = glm::cos(glm::radians(yaw_angle)) * glm::cos(glm::radians(pitch_angle));
-    front.y = glm::sin(glm::radians(pitch_angle));
-    front.z = glm::sin(glm::radians(yaw_angle)) * glm::cos(glm::radians(pitch_angle));
-
-    camera_front = glm::normalize(front);
-}
-
-void scroll_callback(GLFWwindow *window, double x_offset, double y_offset)
-{
-    //printf("y offset: %f\n", y_offset);
-    fov -= y_offset;
-
-    if (fov > 45.0f) fov = 45.0f;
-    else if (fov < 1.0f) fov = 1.0f;
-}
 
 int main(void)
 {
@@ -211,6 +91,8 @@ int main(void)
 
     glViewport(0, 0, 800, 600);
     
+    cam = init(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
+
     Shader shader;
     init(&shader, "shader\\vertex_shader.vert", "shader\\fragment_shader.frag");
     
@@ -388,21 +270,14 @@ int main(void)
         glBindTexture(GL_TEXTURE_2D, texture_awesomeface);
 
 
-        float radius = 10.0f;
-        float angle = glfwGetTime();
-        float x_pos = glm::sin(angle) * radius;
-        float z_pos = glm::cos(angle) * radius;
 
-        glm::mat4 view = glm::lookAt(camera_pos,
-                                     camera_pos + camera_front,
-                                     camera_up);
 
         glm::mat4 projection = glm::mat4(1.0f);
-        projection = glm::perspective(glm::radians(fov),
+        projection = glm::perspective(glm::radians(cam.fov),
                                       (float)screen_width / (float)screen_height,
                                       0.1f, 100.0f);
 
-        set_mat4(&shader, "view", view);
+        set_mat4(&shader, "view", get_view_matrix(&cam));
         set_mat4(&shader, "projection", projection);
 
         glBindVertexArray(VAO);
@@ -412,8 +287,9 @@ int main(void)
         {
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, cube_positions[index]);
-            float angle = 0.0f;
-            model = glm::rotate(model, glm::radians(angle*25.0f), glm::vec3(1.0f, 0.3f, 0.5f));
+            float angle = glfwGetTime();
+            if (index % 2 == 0) angle = -angle;
+            model = glm::rotate(model, glm::radians(angle*20.0f), glm::vec3(1.0f, 0.3f, 0.5f));
 
             set_mat4(&shader, "model", model);
 
@@ -431,4 +307,119 @@ int main(void)
 
     glfwTerminate();
     return 0;
+}
+
+
+void process_input(GLFWwindow *window)
+{
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+    {
+        cam.speed *= 2.5f;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    {
+        glfwSetWindowShouldClose(window, true);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
+    {
+        draw_wireframe = !draw_wireframe;
+    }
+    
+    if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS)
+    {
+        cam.flying = !cam.flying;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
+    {
+    }
+    if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
+    {
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    {
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    {
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        move(&cam, glm::vec3(0.0f, 0.0f, 1.0f), delta_time);
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        move(&cam, glm::vec3(0.0f, 0.0f, -1.0f), delta_time);
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        move(&cam, glm::vec3(-1.0f, 0.0f, 0.0f), delta_time);
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        move(&cam, glm::vec3(1.0f, 0.0f, 0.0f), delta_time);
+    }
+}
+
+void mouse_callback(GLFWwindow *window, double mouse_x, double mouse_y)
+{
+    static bool first_mouse = true;
+    if (first_mouse) // to avoid big jump on first callback
+    {
+        mouse_last_x = mouse_x;
+        mouse_last_y = mouse_y;
+        first_mouse = false;
+    }
+
+    float mouse_x_offset = mouse_x - mouse_last_x;
+    float mouse_y_offset = mouse_last_y - mouse_y;
+
+    mouse_last_x = mouse_x;
+    mouse_last_y = mouse_y;
+    
+    mouse_x_offset *= mouse_sensitivity;
+    mouse_y_offset *= mouse_sensitivity;
+
+    rotate(&cam, -mouse_x_offset, -mouse_y_offset);
+}
+
+void scroll_callback(GLFWwindow *window, double x_offset, double y_offset)
+{
+    zoom(&cam, y_offset);
+}
+
+
+
+
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
+{
+    printf("Framebuffer W: %d, H: %d\n", width, height);
+    screen_width = width;
+    screen_height = height;
+    glViewport(0, 0, width, height);
+}
+
+void window_size_callback(GLFWwindow *window, int width, int height)
+{
+    printf("Window W: %d, H: %d\n", width, height);
+}
+
+void window_content_scale_callback(GLFWwindow* window, float xscale, float yscale)
+{
+    printf("Content scale xscale: %f, yscale: %f\n", xscale, yscale);
+}
+
+void error_callback(int error_code, const char *error_str)
+{
+    LOG_E("GLFW error #%d: %s", error_code, error_str);
 }

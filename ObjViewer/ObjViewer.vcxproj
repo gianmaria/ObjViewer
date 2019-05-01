@@ -83,6 +83,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\camera.cpp" />
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\log.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -90,6 +91,7 @@
     <ClCompile Include="src\stb_image.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\camera.h" />
     <ClInclude Include="src\glad\glad.h" />
     <ClInclude Include="src\KHR\khrplatform.h" />
     <ClInclude Include="src\log.h" />
